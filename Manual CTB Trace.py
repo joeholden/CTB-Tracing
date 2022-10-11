@@ -48,7 +48,7 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
     background = 1.65 * background
 
     # For each ~6um x-distance along the ROI range bounds, find the pixel intensity at each y position (vertical strip)
-    # Save the average intensity of this vertical strip.
+    # Find the number of those pixels that are above background level (CTB density). Save as a decimal 0-1. 
     strips = defaultdict(list)
     strip_width_dv = math.ceil(6 * resolution)
     bins = []  # include left edges of pixel bins
