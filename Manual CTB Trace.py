@@ -31,7 +31,7 @@ def get_roi_pixels(roi_path):
 
 def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, background_roi_path, resolution):
     """Returns a vertical strip image where the top corresponds to the medial SC and the bottom to the lateral SC.
-    Intensities along a horizontal strip in this image (identical) are the average intensity along a 1px wide
+    Intensities along a horizontal strip in this image are the average intensity along a 6um-wide
     dorsal-ventral strip of the original SC image."""
     image = nd2.imread(nd2_path).astype(np.uint16)
     sc_pixels = get_roi_pixels(sc_roi_path)
