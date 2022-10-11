@@ -73,17 +73,17 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
         density = sum(above_bg) / len(intensity_array)
         ctb_density[key] = (density, density >= 0.7)
 
-    # create an array of the average intensity values along the medial-lateral axis of the SC
+    # create an array of the CTB density values along the medial-lateral axis of the SC
     medial_lateral_sc_densities = np.array([i[1][0] for i in ctb_density.items()])  # 1D array with density values (0-1)
     medial_lateral_sc_densities = [round(i, 1) for i in 255 * medial_lateral_sc_densities]
     medial_lateral_sc_densities = [255 if i == 256 else i for i in medial_lateral_sc_densities]
 
-    # Track percent transport. Defined as percent of slices above 70% CTB density
+    # Track transport along medial-lateral axis. Want the total number of slices and the number of slices that have CTB density >=70%.
     above_70_ctb = np.array([i[1][1] for i in ctb_density.items()])
     num_slices = len(above_70_ctb)
     num_slices_above_70_ctb = np.count_nonzero(above_70_ctb)
 
-    # rgb = cm.seismic(k)[0:3]  # rgba is returned as decimals with 1 being max and 0 bein min
+    # take the array and make it a matrix so the final image isnt super skinny. Tile it based on strip_width input. 
     medial_lateral_sc_densities = np.tile(medial_lateral_sc_densities, (strip_width, 1))
 
     # Transpose so correct orientation of vertical strip is acquired.
