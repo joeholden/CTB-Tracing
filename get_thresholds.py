@@ -5,7 +5,7 @@ import os
 
 def get_threshold(image_path):
     """
-    Takes in an 8-bit red LUT tif and allows user input to determine lower threshold
+    Takes in an 8-bit LUT tif (RGB) and allows user input to determine lower threshold
     Outputs the thresholds for all images in a directory to an Excel sheet
     Read in any LUT you want
     """
