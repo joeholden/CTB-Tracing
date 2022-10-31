@@ -1,7 +1,11 @@
 import re
 import pandas as pd
 
-
+"""
+This script sorts your filenames so that they are in order during the tracing script. Strips need to be concatenated
+in the correct anterior to posterior direction. This assumes you have labeled slides like the following:
+'something slide 1 slice 16 something else.extension'
+"""
 slide_pattern = r'slide (\d+)?'
 slice_pattern = r'slice (\d+)'
 
@@ -13,6 +17,7 @@ def regex_filenames(file_string):
 
 
 def sort_filenames(list_of_filenames):
+    """Returns a list of pathnames that are in correct SC slice order as opposed to the random nature of os.walk"""
     joined_info = []
     for f in list_of_filenames:
         slide_num, slice_num = regex_filenames(f)

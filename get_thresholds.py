@@ -2,6 +2,16 @@ import cv2
 import pandas as pd
 import os
 
+"""
+1. Change the directory path below to the place where your images to threshold are stored. You can also change the excel
+    sheet name. 
+2. Use the Slider that pops up to change the threshold lower value.
+3. In the same Image you threshold left and right side. Press Q when you are happy with the left threshold,
+    and press W when you are happy with the right side.
+"""
+directory_with_images = '/Users/joemattholden/PycharmProjects/ctb_tracing/this_dir/'
+name_of_excel_sheet_with_results = 'threshold_values.xlsx'
+
 
 def get_threshold(image_path):
     """
@@ -66,7 +76,6 @@ def get_threshold(image_path):
 
 
 thresholds = {}
-directory_with_images = '/Users/joemattholden/PycharmProjects/ctb_tracing/this_dir/'
 for root, dirs, files in os.walk(directory_with_images):
     for file in files:
         if not file.endswith('.DS_Store'):
@@ -76,4 +85,4 @@ filenames = thresholds.keys()
 left_thresholds = [i[1][0] for i in thresholds.items()]
 right_thresholds = [i[1][1] for i in thresholds.items()]
 df = pd.DataFrame(zip(filenames, left_thresholds, right_thresholds), columns=['Filename', 'Left BG', 'Right BG'])
-df.to_excel('threshold_values.xlsx')
+df.to_excel(name_of_excel_sheet_with_results)
