@@ -12,6 +12,7 @@ from skimage import io
 import pandas as pd
 from pathlib import Path
 import sys
+from regex_sort import sort_filenames
 
 
 def get_roi_pixels(roi_path):
@@ -32,14 +33,14 @@ def get_roi_pixels(roi_path):
     return px_inside
 
 
-def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, background_roi_path, resolution,
-                                   background_information, side, bg='manual'):
+def single_section_intensity_strip(tif_path, strip_width, sc_roi_path, background_roi_path, resolution,
+                                   excel_path, side, bg='manual'):
     """Returns a vertical strip image where the top corresponds to the medial SC and the bottom to the lateral SC.
     Intensities along a horizontal strip in this image are the average intensity along a 6um-wide
     dorsal-ventral strip of the original SC image. Additionally, a tuple is returned with the total number of
     dorsal-ventral slices in the image as well as the number of those slices that have CTB density >=70%.
     Parameters:
-    'nd2_path':
+    'tif_path':
     'strip_width': integer in microns
     'sc_roi_path':
     'background_roi_path':
@@ -48,7 +49,7 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
         image column name, and the third is the background value column name
     'side' should be either 'left' or 'right' and controls the heatmap display orientation"""
 
-    image = nd2.imread(nd2_path).astype(np.uint16)
+    image = cv2.imread(tif_path)
     sc_pixels = get_roi_pixels(sc_roi_path)
 
     # Get a background fluorescence value
@@ -62,12 +63,9 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
         # The background defined by the periaqueductal grey is too low
         background = 1.65 * background
     else:
-        zipped_bg = read_background(background_information)
-        image_name = Path(nd2_path).stem
+        zipped_bg = read_background(excel_path, side)
+        background = [i for i in zipped_bg if i[0] == tif_path.split('/')[1]][0][1]
 
-        for index, val in enumerate(zipped_bg):
-            if str(val[0]) == image_name:
-                background = val[1]
         try:
             background
         except NameError:
@@ -96,7 +94,7 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
     ctb_density = defaultdict()  # bin_key: (CTB density as fraction of pixels above background, Greater 70% Boolean)
     for key in strips.keys():
         intensity_array = strips[key]
-        above_bg = [1 if i > background else 0 for i in intensity_array]
+        above_bg = [1 if i[1] > background else 0 for i in intensity_array]
         density = sum(above_bg) / len(intensity_array)
         ctb_density[key] = (density, density >= 0.7)
 
@@ -122,11 +120,12 @@ def single_section_intensity_strip(nd2_path, strip_width, sc_roi_path, backgroun
     return transposed, (num_slices, num_slices_above_70_ctb)
 
 
-def loop(nd2_directory, roi_directory, strip_width, resolution, background_info, side):
+def loop(tif_directory, roi_directory, strip_width, resolution, excel_path, side):
     """
     Loops through all the SC images, gets CTB transport value, writes image, and stdout the transport percent.
 
-    :param nd2_directory: full path to directory
+    :param excel_path:
+    :param tif_directory: full path to directory
     :param roi_directory: full path to directory
     :param strip_width: integer in microns
     :param resolution: float in px/um
@@ -136,27 +135,33 @@ def loop(nd2_directory, roi_directory, strip_width, resolution, background_info,
 
     """
     paths_to_images = []
-    for root, dirs, files in os.walk(nd2_directory):
+    for root, dirs, files in os.walk(tif_directory):
         for file in files:
-            paths_to_images.append(os.path.join(root, file))
+            if file != '.DS_Store':  # weird mac hidden file
+                paths_to_images.append(os.path.join(root, file))
+    paths_to_images = sort_filenames(paths_to_images)  # sorts filenames using regex so they are in the correct order
 
     num_images = len(paths_to_images)
     strips = []
     total_dorsal_ventral_slices = 0
     total_dorsal_ventral_slices_above_70 = 0
-    for i in range(1, num_images):  # TODO: numpages +1 doesnt work?
-        im, (num_slices, num_slices_above_70_ctb) = single_section_intensity_strip(
-            nd2_path=os.path.join(nd2_directory, f'{i}.nd2'), strip_width=strip_width,
-            sc_roi_path=os.path.join(roi_directory, str(i) + '.roi'),
-            background_roi_path=os.path.join(roi_directory, str(2 * 1) + '.roi'),
-            resolution=resolution, background_information=background_info, side=side)
+    for i in range(num_images):
+        tif_path = paths_to_images[i]
+        roi_path = os.path.join(roi_directory, f'{side.title()[0]}_{tif_path.split("/")[-1].strip(".tif")}.nd2.roi')
+
+        try:
+            im, (num_slices, num_slices_above_70_ctb) = single_section_intensity_strip(
+                tif_path=tif_path, strip_width=strip_width, sc_roi_path=roi_path,
+                background_roi_path=None, resolution=resolution, excel_path=excel_path, side=side)
+        except FileNotFoundError as e:
+            print(e)
         strips.append(im)
         total_dorsal_ventral_slices += num_slices
         total_dorsal_ventral_slices_above_70 += num_slices_above_70_ctb
-        # cv2.imwrite(f'strips/strip{i}.png', im)
 
     transport = round((total_dorsal_ventral_slices_above_70 / total_dorsal_ventral_slices) * 100, 1)
     print('Percent Intact Transport: ', transport, '%')
+
     padded_images = []
     max_strip_length = max([i.shape[0] for i in strips])
     count = 1
@@ -168,9 +173,8 @@ def loop(nd2_directory, roi_directory, strip_width, resolution, background_info,
         padded_images.append(padded)
 
     new_image = cv2.hconcat(padded_images).astype(np.uint8)
-
     plt.imsave('plasma_colormap.png', new_image, cmap='plasma')
-    io.imsave(f'8_bit_no_map.png', new_image)
+    # io.imsave(f'8_bit_no_map.png', new_image)
     # TODO: Output transport to excel file
     # TODO: Get proper filenames for heatmaps
 
@@ -189,15 +193,20 @@ def loop(nd2_directory, roi_directory, strip_width, resolution, background_info,
     return transport
 
 
-def read_background(background_information):
+def read_background(excel_path, side):
     """This function reads an excel file containing manual determined 16-bit background intensities
     for each SC slice and returns a zipped list with the image name and background. The parameter background
     should be a list where the first element is the path to the excel file, the second is the sc image column name,
     and the third is the background value column name"""
-    [excel_path, sc_image_header, bg_header] = background_information
     df = pd.read_excel(excel_path)
-    image_names = df[sc_image_header]
-    bg_values = df[bg_header]
+    image_names = df['Filename']
+    if side.lower() == 'left':
+        bg_values = df['Left BG']
+    elif side.lower() == 'right':
+        bg_values = df['Right BG']
+    else:
+        print('Incorrect Side Listed for Background')
+        sys.exit(1)
     zipped = list(zip(image_names, bg_values))
     return zipped
 
@@ -211,15 +220,17 @@ def clean_heatmap(mask, heatmap, background_color_bgr):
         for y in range(m.shape[0]):
             if m[y, x] == 0:
                 heatmap[y, x] = background_color_bgr
-    cv2.imwrite('j.png', heatmap)
+    cv2.imwrite('38 Left.png', heatmap)
 
 
-# loop(nd2_directory='34 nd2',
-#      roi_directory='RoiSet', strip_width=5,
-#      resolution=0.6154, background_info=['34.xlsx', 'image', 'bg'], side='right')
+loop(tif_directory='36 redo/fixed 36 tif/',
+     roi_directory='36 redo/fixed 36 roi/', strip_width=5,
+     resolution=0.6154, excel_path='36 redo/threshold_values.xlsx', side='left')
 
-clean_heatmap('mask.png', 'left.png', [0, 0, 0])
+clean_heatmap('mask.png', 'plasma_colormap.png', [0, 0, 0])
 
 # TODO: Right now all filenames are read in as numbers. This has to be generalized. Set up naming convention
 # TODO: ROI filenames are also numbers
 # TODO: For the final image remove background blue color with black. Mask the SC region
+
+# Filename, Left BG, Right BG

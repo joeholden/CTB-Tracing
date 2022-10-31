@@ -66,10 +66,11 @@ def get_threshold(image_path):
 
 
 thresholds = {}
-directory_with_images = 'this_dir'
+directory_with_images = '/Users/joemattholden/PycharmProjects/ctb_tracing/this_dir/'
 for root, dirs, files in os.walk(directory_with_images):
     for file in files:
-        thresholds[file] = get_threshold(os.path.join(root, file))
+        if not file.endswith('.DS_Store'):
+            thresholds[file] = get_threshold(os.path.join(root, file))
 
 filenames = thresholds.keys()
 left_thresholds = [i[1][0] for i in thresholds.items()]
