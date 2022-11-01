@@ -32,14 +32,15 @@ def get_roi_pixels(roi_path):
 
 def single_section_intensity_strip(tif_path, sc_roi_path, excel_path, side, strip_width=5, resolution=0.6154):
     """Returns a vertical strip image where the top corresponds to the medial SC and the bottom to the lateral SC.
-    Intensities along a horizontal strip in this image are the average intensity along a 6um-wide
-    dorsal-ventral strip of the original SC image. Additionally, a tuple is returned with the total number of
-    dorsal-ventral slices in the image as well as the number of those slices that have CTB density >=70%.
+    Intensities along this image are the average intensity along a 6um-wide dorsal-ventral strip of the original SC
+    image. Additionally, a tuple is returned with the total number of dorsal-ventral slices in the image as well as the
+    number of those slices that have CTB density >=70%.
 
-    This code is written to deal with 8 bit TIF images. ND2 are 16 bit and there are conversion issues with brightness
-    if you load the full 16 bit image and try to display it.
+    This code is written to deal with 8 bit TIF images. ND2 from Nikon Eclipse are default 16 bit and there are
+    conversion issues with brightness if you load the full 16 bit image and try to display it.
 
-    Medial SC on top of image, Lateral SC on bottom, A-P depends on how you number/image your slides
+    Medial SC on top of image, Lateral SC on bottom, A-P depends on how you number/image your slides. Stitched left
+    to right, low slide numbers to high
 
     Parameters:
     :param tif_path:
@@ -55,6 +56,8 @@ def single_section_intensity_strip(tif_path, sc_roi_path, excel_path, side, stri
 
     # Get a background fluorescence value
     zipped_bg = read_background(excel_path, side)
+    # tif_path is tif_dir/file.tif
+    # choose the first (only) element from the list and the second element in that list for bg
     background = [i for i in zipped_bg if i[0] == tif_path.split('/')[1]][0][1]
 
     # For each ~6um x-distance along the SC ROI range bounds, find the pixel intensity at each y position
@@ -142,6 +145,8 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
     total_dorsal_ventral_slices_above_70 = 0
     for i in range(num_images):
         tif_path = paths_to_images[i]
+        # ROIs are made from .nd2 but we reference it using the .tif path.
+        # The ROI renaming macro keeps the .nd2 extension
         roi_path = os.path.join(roi_directory, f'{side.title()[0]}_{tif_path.split("/")[-1].strip(".tif")}.nd2.roi')
 
         try:
@@ -157,10 +162,15 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
         total_dorsal_ventral_slices_above_70 += num_slices_above_70_ctb
 
     transport = round((total_dorsal_ventral_slices_above_70 / total_dorsal_ventral_slices) * 100, 1)
-    print('Percent Intact Transport: ', transport, '%')
+    print(f'{output_heatmap_name}_Percent Intact Transport: ', transport, '%')
 
     # Create the heatmap. Each strip needs to be padded so that the middle of the strip is the middle of the heatmap.
     # Makes the final image more circular than V shaped.
+    try:
+        os.mkdir("heatmaps")
+    except FileExistsError:
+        pass
+
     padded_images = []
     max_strip_length = max([i.shape[0] for i in strips])
     count = 1
@@ -173,7 +183,7 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
 
     # Concatenate padded strips together into heatmap. Save with plasma CMAP.
     heatmap = cv2.hconcat(padded_images).astype(np.uint8)
-    plt.imsave(f'{output_heatmap_name}.png', heatmap, cmap='plasma')
+    plt.imsave(f'heatmaps/{output_heatmap_name}.png', heatmap, cmap='plasma')
 
     # Make a mask of the heatmap so you can remove background on the final color-mapped image without touching data
     mask_strips = [np.full(i.shape, 255) for i in strips]
@@ -185,16 +195,16 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
         padded = np.pad(image, [(left_pad, right_pad), (0, 0)], 'constant')
         mask_padded_images.append(padded)
     mask = cv2.hconcat(mask_padded_images).astype(np.uint8)
-    io.imsave(f'{output_heatmap_name}_mask.png', mask)
+    io.imsave(f'heatmaps/{output_heatmap_name}_mask.png', mask)
 
     # Remove background in heatmap
-    heatmap = cv2.imread(f'{output_heatmap_name}.png')
+    heatmap = cv2.imread(f'heatmaps/{output_heatmap_name}.png')
     for x in range(mask.shape[1]):
         for y in range(mask.shape[0]):
             if mask[y, x] == 0:
                 heatmap[y, x] = (0, 0, 0)
-    cv2.imwrite(f'{output_heatmap_name}.png', heatmap)
-    os.remove(f'{output_heatmap_name}_mask.png')
+    cv2.imwrite(f'heatmaps/{output_heatmap_name}.png', heatmap)
+    os.remove(f'heatmaps/{output_heatmap_name}_mask.png')
 
     return transport
 
