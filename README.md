@@ -2,7 +2,8 @@
 This script is meant to be a replacement for an Image Pro macro to quantify in tact CTB transport to the superior colliculus. The Image Pro macro is no longer maintained and the license for Image Pro is $5k.
 Eventually, this is meant to become a more automated repository. Currently, significant manual input is needed in ImageJ tracing ROIs. 
 
-1. Trace ROI of superficial layers of SC and save
-2. Determine background level to substract
-3. Input background levels for each slice into excel sheet
-4. Run program to get SC transport values output to an excel sheet and heatmap images.
+1. Using ImageJ, Trace ROI of superficial layers of SC using the polygon tool. Trace .nd2 files. If you trace other formats, alter the ctb_trace.py file line 150 where the roi_path is defined in the function loop- it assumes .nd2. 
+2. Add ROIs to the manager using the SaveROI macro.
+3. 2. Take 16 bit .nd2 files from the Nikon Eclipse microscope and convert them to 8 bit TIF files using Batch ND2_TIF8 macro.
+4. Determine background level to substract using the script get_thresholds.py. This measures 8 bit thresholds. 
+5. Run main.py to ourput heatmaps and transport data to excel sheet. 
