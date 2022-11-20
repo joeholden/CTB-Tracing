@@ -20,15 +20,16 @@ sides = ['left', 'right']
 threshold_excel_path = 'threshold_values.xlsx'
 """
 
-tif_dirs = ['35 tif']
-roi_dirs = ['35 roi']
-animals = [35]
+tif_dirs = ['39 tif', '40 tif', '41 tif', '42 tif', '43 tif']
+roi_dirs = ['39 roi', '40 roi', '41 roi', '42 roi', '43 roi']
+animals = [39, 40, 41, 42, 43]
 sides = ['left', 'right']
-threshold_excel_path = 'threshold_values2.xlsx'
+threshold_excel_path = 'threshold_values_39_43.xlsx'
 
 
 if __name__ == "__main__":
     zipped = list(zip(tif_dirs, roi_dirs, animals))
+    print(zipped)
     transport_dictionary = defaultdict()
 
     for i in range(len(zipped)):

@@ -9,8 +9,8 @@ import os
 3. In the same Image you threshold left and right side. Press Q when you are happy with the left threshold,
     and press W when you are happy with the right side.
 """
-directory_with_images = '/Users/joemattholden/PycharmProjects/ctb_tracing/this_dir/'
-name_of_excel_sheet_with_results = 'threshold_values.xlsx'
+directory_with_images = r"C:\Users\joema\Desktop\ctb\CTB-Tracing\tif_8b".replace("\\", os.sep)
+name_of_excel_sheet_with_results = 'threshold_values_39_43.xlsx'
 
 
 def get_threshold(image_path):

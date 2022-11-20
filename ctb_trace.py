@@ -58,7 +58,7 @@ def single_section_intensity_strip(tif_path, sc_roi_path, excel_path, side, stri
     zipped_bg = read_background(excel_path, side)
     # tif_path is tif_dir/file.tif
     # choose the first (only) element from the list and the second element in that list for bg
-    background = [i for i in zipped_bg if i[0] == tif_path.split('/')[1]][0][1]
+    background = [i for i in zipped_bg if i[0] == tif_path.split(os.sep)[1]][0][1]
 
     # For each ~6um x-distance along the SC ROI range bounds, find the pixel intensity at each y position
     # (vertical strip). Find the number of those pixels that are above background level (CTB density).
@@ -134,7 +134,6 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
             if file != '.DS_Store':  # weird mac hidden file
                 paths_to_images.append(os.path.join(root, file))
     paths_to_images = sort_filenames(paths_to_images)  # sorts filenames using regex so they are in the correct order
-
     num_images = len(paths_to_images)
     strips = []
 
@@ -147,8 +146,7 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
         tif_path = paths_to_images[i]
         # ROIs are made from .nd2 but we reference it using the .tif path.
         # The ROI renaming macro keeps the .nd2 extension
-        roi_path = os.path.join(roi_directory, f'{side.title()[0]}_{tif_path.split("/")[-1].strip(".tif")}.nd2.roi')
-
+        roi_path = os.path.join(roi_directory, f'{side.title()[0]}_{tif_path.split(os.sep)[-1].strip(".tif")}.nd2.roi')
         try:
             im, (num_slices, num_slices_above_70_ctb) = single_section_intensity_strip(
                 tif_path=tif_path, strip_width=strip_width, sc_roi_path=roi_path, resolution=resolution,
