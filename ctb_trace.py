@@ -10,6 +10,7 @@ from skimage import io
 import pandas as pd
 import sys
 from regex_sort import sort_filenames
+from DIRECTORY_SETUP import project_directory_path
 
 
 def get_roi_pixels(roi_path):
@@ -57,8 +58,8 @@ def single_section_intensity_strip(tif_path, sc_roi_path, excel_path, side, stri
     # Get a background fluorescence value
     zipped_bg = read_background(excel_path, side)
     # tif_path is tif_dir/file.tif
-    # choose the first (only) element from the list and the second element in that list for bg
-    background = [i for i in zipped_bg if i[0] == tif_path.split(os.sep)[1]][0][1]
+    # If the first element in the tuple (path) equals the current tif path, get its background value
+    background = [i for i in zipped_bg if i[0] == tif_path.split(os.sep)[-1]][0][1]
 
     # For each ~6um x-distance along the SC ROI range bounds, find the pixel intensity at each y position
     # (vertical strip). Find the number of those pixels that are above background level (CTB density).
@@ -147,6 +148,7 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
         # ROIs are made from .nd2 but we reference it using the .tif path.
         # The ROI renaming macro keeps the .nd2 extension
         roi_path = os.path.join(roi_directory, f'{side.title()[0]}_{tif_path.split(os.sep)[-1].strip(".tif")}.nd2.roi')
+
         try:
             im, (num_slices, num_slices_above_70_ctb) = single_section_intensity_strip(
                 tif_path=tif_path, strip_width=strip_width, sc_roi_path=roi_path, resolution=resolution,
@@ -165,7 +167,7 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
     # Create the heatmap. Each strip needs to be padded so that the middle of the strip is the middle of the heatmap.
     # Makes the final image more circular than V shaped.
     try:
-        os.mkdir("heatmaps")
+        os.mkdir(os.path.join(project_directory_path, "heatmaps"))
     except FileExistsError:
         pass
 
@@ -181,7 +183,7 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
 
     # Concatenate padded strips together into heatmap. Save with plasma CMAP.
     heatmap = cv2.hconcat(padded_images).astype(np.uint8)
-    plt.imsave(f'heatmaps/{output_heatmap_name}.png', heatmap, cmap='plasma')
+    plt.imsave(f'{os.path.join(project_directory_path, "heatmaps")}/{output_heatmap_name}.png', heatmap, cmap='plasma')
 
     # Make a mask of the heatmap so you can remove background on the final color-mapped image without touching data
     mask_strips = [np.full(i.shape, 255) for i in strips]
@@ -193,16 +195,16 @@ def loop(tif_directory, roi_directory, excel_path, side, output_heatmap_name, st
         padded = np.pad(image, [(left_pad, right_pad), (0, 0)], 'constant')
         mask_padded_images.append(padded)
     mask = cv2.hconcat(mask_padded_images).astype(np.uint8)
-    io.imsave(f'heatmaps/{output_heatmap_name}_mask.png', mask)
+    io.imsave(f'{os.path.join(project_directory_path, "heatmaps")}/{output_heatmap_name}_mask.png', mask)
 
     # Remove background in heatmap
-    heatmap = cv2.imread(f'heatmaps/{output_heatmap_name}.png')
+    heatmap = cv2.imread(f'{os.path.join(project_directory_path, "heatmaps")}/{output_heatmap_name}.png')
     for x in range(mask.shape[1]):
         for y in range(mask.shape[0]):
             if mask[y, x] == 0:
                 heatmap[y, x] = (0, 0, 0)
-    cv2.imwrite(f'heatmaps/{output_heatmap_name}.png', heatmap)
-    os.remove(f'heatmaps/{output_heatmap_name}_mask.png')
+    cv2.imwrite(f'{os.path.join(project_directory_path, "heatmaps")}/{output_heatmap_name}.png', heatmap)
+    os.remove(f'{os.path.join(project_directory_path, "heatmaps")}/{output_heatmap_name}_mask.png')
 
     return transport
 

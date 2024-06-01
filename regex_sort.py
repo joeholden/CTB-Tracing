@@ -2,9 +2,9 @@ import re
 import pandas as pd
 
 """
-This script sorts your filenames so that they are in order during the tracing script. Strips need to be concatenated
-in the correct anterior to posterior direction. This assumes you have labeled slides like the following:
-'something slide 1 slice 16 something else.extension'
+This script has the functions which sort your filenames so that they are in order during the tracing script. 
+Strips need to be concatenated in the correct anterior to posterior direction. This assumes you have labeled slides
+like the following: 'something slide 1 slice 16 something else.extension'
 """
 slide_pattern = r'slide (\d+)?'
 slice_pattern = r'slice (\d+)'
